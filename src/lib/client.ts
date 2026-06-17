@@ -347,11 +347,6 @@ export class RunPodClient {
           communityCloud
           securePrice
           communityPrice
-          lowestPrice {
-            minimumBidPrice
-            uninterruptablePrice
-            stockStatus
-          }
         }
       }
     `;
