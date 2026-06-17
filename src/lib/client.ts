@@ -171,12 +171,10 @@ export class RunPodClient {
 
   async createEndpoint(config: EndpointConfig): Promise<Endpoint> {
     const mutation = `
-      mutation CreateEndpoint($input: SaveEndpointInput!) {
+      mutation CreateEndpoint($input: EndpointInput!) {
         saveEndpoint(input: $input) {
           id
           name
-          imageUri
-          workersCount
           workersMin
           workersMax
           idleTimeout
@@ -191,19 +189,13 @@ export class RunPodClient {
     const variables = {
       input: {
         name: config.name,
-        imageUri: config.imageUri,
         gpuIds: config.gpuIds,
         scalerType: config.scalerType || 'QUEUE_DELAY',
         scalerValue: config.scalerValue || 1,
         workersMin: config.workersMin || 0,
         workersMax: config.workersMax || 1,
-        containerDiskInGb: config.containerDiskInGb || 20,
-        volumeInGb: config.volumeInGb || 0,
-        volumeMountPath: config.volumeMountPath || '',
-        env: config.env ? Object.entries(config.env).map(([name, value]) => ({ name, value })) : [],
-        ports: config.ports || '',
-        startCommand: config.startCommand || '',
         idleTimeout: config.idleTimeout || 5,
+        ...(config.templateId ? { templateId: config.templateId } : {}),
       },
     };
 
@@ -241,29 +233,28 @@ export class RunPodClient {
     }
 
     const mutation = `
-      mutation ScaleWorkers($input: UpdateEndpointWorkersCountInput!) {
-        updateEndpointWorkersCount(input: $input) {
+      mutation ScaleWorkersMax($input: UpdateEndpointWorkersInput!) {
+        updateEndpointWorkersMax(input: $input) {
           id
           name
-          workersCount
           workersMin
           workersMax
         }
       }
     `;
 
-    const variables = { input: { endpointId, workersCount } };
+    const variables = { input: { endpointId, workerCount: workersCount } };
 
-    const result = await this.graphql<{ updateEndpointWorkersCount: Endpoint }>(
+    const result = await this.graphql<{ updateEndpointWorkersMax: Endpoint }>(
       mutation,
       variables
     );
 
-    if (!result.updateEndpointWorkersCount) {
+    if (!result.updateEndpointWorkersMax) {
       throw new APIError('Invalid scaleWorkers response', 500);
     }
 
-    return result.updateEndpointWorkersCount;
+    return result.updateEndpointWorkersMax;
   }
 
   // ── Templates ─────────────────────────────────────────────────────────────
