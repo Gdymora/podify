@@ -1,10 +1,16 @@
 {
-  "name": "@Gdymora/runpod-api",
+  "name": "@gdymora/runpod-api",
   "version": "1.0.0",
-  "description": "🚀 Потужна TypeScript бібліотека для автоматизації RunPod Serverless API",
+  "description": "TypeScript library for RunPod Serverless API automation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "author": "Gdymora",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
+    "prepare": "tsc",
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "jest",
