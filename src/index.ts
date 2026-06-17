@@ -6,9 +6,15 @@
 
 // Core classes
 export { RunPodClient } from './lib/client';
-export { ServerlessManager } from './lib/serverless';  
+export { ServerlessManager } from './lib/serverless';
 export { MonitoringService, createAlertRules } from './lib/monitoring';
 export { APIClient } from './lib/api-client';
+export { PodManager } from './lib/pod-manager';
+export { StorageManager } from './lib/storage-manager';
+
+// Pod & Storage types
+export type { Pod, PodCreateInput, GpuType } from './lib/pod-manager';
+export type { NetworkVolume, VolumeInfo, NetworkVolumeCreateInput } from './lib/storage-manager';
 
 // Types
 export * from './types';
