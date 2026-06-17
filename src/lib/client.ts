@@ -348,7 +348,6 @@ export class RunPodClient {
           securePrice
           communityPrice
           lowestPrice {
-            gpuTypeId
             minimumBidPrice
             uninterruptablePrice
             stockStatus
@@ -427,11 +426,9 @@ export class RunPodClient {
       );
     }
 
-    const gpuPoolId = gpu.lowestPrice?.gpuTypeId ?? gpu.id;
     return this.createEndpoint({
       name: config.name,
       templateId,
-      gpuIds: [gpuPoolId],
       workersMin: config.workersMin ?? 0,
       workersMax: config.workersMax ?? 1,
       scalerType: 'QUEUE_DELAY',
