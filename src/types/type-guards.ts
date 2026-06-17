@@ -50,7 +50,7 @@ export interface EndpointConfig {
   name: string;
   imageUri?: string;
   templateId?: string;
-  gpuIds: string[];
+  gpuIds?: string[];
   scalerType?: 'QUEUE_DELAY' | 'REQUEST_COUNT';
   scalerValue?: number;
   workersMin?: number;

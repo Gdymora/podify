@@ -189,7 +189,7 @@ export class RunPodClient {
     const variables = {
       input: {
         name: config.name,
-        gpuIds: Array.isArray(config.gpuIds) ? config.gpuIds.join(',') : config.gpuIds,
+        ...(config.gpuIds?.length ? { gpuIds: Array.isArray(config.gpuIds) ? config.gpuIds.join(',') : config.gpuIds } : {}),
         scalerType: config.scalerType || 'QUEUE_DELAY',
         scalerValue: config.scalerValue || 1,
         workersMin: config.workersMin || 0,
