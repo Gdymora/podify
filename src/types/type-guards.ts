@@ -48,7 +48,8 @@ export interface RunPodConfig {
 
 export interface EndpointConfig {
   name: string;
-  imageUri: string;
+  imageUri?: string;
+  templateId?: string;
   gpuIds: string[];
   scalerType?: 'QUEUE_DELAY' | 'REQUEST_COUNT';
   scalerValue?: number;
@@ -103,6 +104,54 @@ export interface RunJobInput {
       delayMs?: number;
     };
   };
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  imageName: string;
+  dockerArgs?: string;
+  containerDiskInGb?: number;
+  volumeInGb?: number;
+  volumeMountPath?: string;
+  ports?: string;
+  env?: Array<{ key: string; value: string }>;
+  isPublic?: boolean;
+  readme?: string;
+  isServerless?: boolean;
+}
+
+export interface GpuType {
+  id: string;
+  displayName: string;
+  memoryInGb: number;
+  secureCloud: boolean;
+  communityCloud: boolean;
+  securePrice?: number;
+  communityPrice?: number;
+  clusterPrice?: number;
+  oneMonthPrice?: number;
+  threeMonthPrice?: number;
+  sixMonthPrice?: number;
+  oneWeekPrice?: number;
+  communitySpotPrice?: number;
+  secureSpotPrice?: number;
+  throughput?: number;
+  lowestPrice?: {
+    minimumBidPrice?: number;
+    uninterruptablePrice?: number;
+    stockStatus?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNAVAILABLE';
+  };
+}
+
+export interface ResourceStats {
+  totalTemplates: number;
+  comfyTemplates: number;
+  publicTemplates: number;
+  totalGpus: number;
+  availableGpus: number;
+  communityGpus: number;
+  secureGpus: number;
 }
 
 // src/lib/type-guards.ts

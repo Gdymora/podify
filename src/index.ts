@@ -13,8 +13,11 @@ export { PodManager } from './lib/pod-manager';
 export { StorageManager } from './lib/storage-manager';
 
 // Pod & Storage types
-export type { Pod, PodCreateInput, GpuType } from './lib/pod-manager';
+export type { Pod, PodCreateInput } from './lib/pod-manager';
 export type { NetworkVolume, VolumeInfo, NetworkVolumeCreateInput } from './lib/storage-manager';
+
+// Client types
+export type { GpuType, Template, ResourceStats } from './types/type-guards';
 
 // Types
 export * from './types';

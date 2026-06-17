@@ -1,9 +1,12 @@
 import {
   Endpoint,
   EndpointConfig,
+  GpuType,
+  ResourceStats,
   RunJobInput,
   RunPodConfig,
   ServerlessJob,
+  Template,
 } from '@/types/type-guards';
 import { APIError, ValidationError } from '../errors';
 import { GraphQLResponse, hasGraphQLErrors, isGraphQLResponse } from '../types';
@@ -261,6 +264,201 @@ export class RunPodClient {
     }
 
     return result.updateEndpointWorkersCount;
+  }
+
+  // ── Templates ─────────────────────────────────────────────────────────────
+
+  async getTemplates(): Promise<Template[]> {
+    const query = `
+      query {
+        myself {
+          podTemplates {
+            id name imageName dockerArgs containerDiskInGb
+            volumeInGb volumeMountPath ports isPublic readme isServerless
+            env { key value }
+          }
+        }
+      }
+    `;
+    const result = await this.graphql<{ myself: { podTemplates: Template[] } }>(query);
+    if (!result.myself || !Array.isArray(result.myself.podTemplates)) {
+      throw new APIError('Invalid templates response structure', 500);
+    }
+    return result.myself.podTemplates;
+  }
+
+  async getTemplate(templateId: string): Promise<Template> {
+    if (!templateId) throw new ValidationError('Template ID is required');
+    const templates = await this.getTemplates();
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) throw new APIError(`Template ${templateId} not found`, 404);
+    return template;
+  }
+
+  async getPublicTemplates(): Promise<Template[]> {
+    const templates = await this.getTemplates();
+    return templates.filter((t) => t.isPublic);
+  }
+
+  async searchTemplates(searchTerm: string, includePublic = true): Promise<Template[]> {
+    const [user, pub] = await Promise.all([
+      this.getTemplates(),
+      includePublic ? this.getPublicTemplates() : Promise.resolve([]),
+    ]);
+    const lower = searchTerm.toLowerCase();
+    return [...user, ...pub].filter(
+      (t) => t.name.toLowerCase().includes(lower) || t.imageName.toLowerCase().includes(lower)
+    );
+  }
+
+  async searchComfyUITemplates(): Promise<Template[]> {
+    const templates = await this.getTemplates();
+    return templates.filter(
+      (t) =>
+        t.name.toLowerCase().includes('comfy') ||
+        t.imageName.toLowerCase().includes('comfy') ||
+        t.readme?.toLowerCase().includes('comfy')
+    );
+  }
+
+  async getRecommendedTemplate(
+    task: 'comfyui' | 'stable-diffusion' | 'pytorch' | 'tensorflow'
+  ): Promise<Template | null> {
+    const keywords: Record<string, string[]> = {
+      comfyui: ['comfy', 'ui'],
+      'stable-diffusion': ['stable', 'diffusion', 'sd'],
+      pytorch: ['pytorch', 'torch'],
+      tensorflow: ['tensorflow', 'tf'],
+    };
+    const templates = await this.getTemplates();
+    for (const kw of keywords[task] ?? []) {
+      const found = templates.find(
+        (t) =>
+          t.name.toLowerCase().includes(kw) ||
+          t.imageName.toLowerCase().includes(kw) ||
+          t.readme?.toLowerCase().includes(kw)
+      );
+      if (found) return found;
+    }
+    return templates.find((t) => t.isPublic) ?? null;
+  }
+
+  // ── GPU ───────────────────────────────────────────────────────────────────
+
+  async getGpuTypes(): Promise<GpuType[]> {
+    const query = `
+      query {
+        gpuTypes {
+          id displayName memoryInGb secureCloud communityCloud
+          securePrice communityPrice clusterPrice
+          oneMonthPrice threeMonthPrice sixMonthPrice oneWeekPrice
+          communitySpotPrice secureSpotPrice throughput
+          lowestPrice { minimumBidPrice uninterruptablePrice stockStatus }
+        }
+      }
+    `;
+    const result = await this.graphql<{ gpuTypes: GpuType[] }>(query);
+    if (!Array.isArray(result.gpuTypes)) {
+      throw new APIError('Invalid GPU types response structure', 500);
+    }
+    return result.gpuTypes;
+  }
+
+  async getSecureCloudGpus(): Promise<GpuType[]> {
+    return (await this.getGpuTypes()).filter((g) => g.secureCloud);
+  }
+
+  async getCommunityCloudGpus(): Promise<GpuType[]> {
+    return (await this.getGpuTypes()).filter((g) => g.communityCloud);
+  }
+
+  async getAvailableGpus(): Promise<GpuType[]> {
+    return (await this.getGpuTypes()).filter((g) => {
+      const status = g.lowestPrice?.stockStatus;
+      return !status || ['HIGH', 'MEDIUM'].includes(status);
+    });
+  }
+
+  async getCheapestGpu(communityCloud = true): Promise<GpuType | null> {
+    const gpus = (await this.getAvailableGpus()).filter((g) =>
+      communityCloud ? g.communityCloud : g.secureCloud
+    );
+    if (!gpus.length) return null;
+    return gpus.reduce((best, cur) => {
+      const price = (g: GpuType) =>
+        communityCloud
+          ? (g.lowestPrice?.minimumBidPrice ?? g.communityPrice ?? Infinity)
+          : (g.lowestPrice?.uninterruptablePrice ?? g.securePrice ?? Infinity);
+      return price(cur) < price(best) ? cur : best;
+    });
+  }
+
+  async getGpuInfo(gpuId: string): Promise<GpuType | null> {
+    return (await this.getGpuTypes()).find((g) => g.id === gpuId) ?? null;
+  }
+
+  // ── Smart endpoint ────────────────────────────────────────────────────────
+
+  async createSmartEndpoint(config: {
+    name: string;
+    task?: 'comfyui' | 'stable-diffusion' | 'pytorch' | 'tensorflow';
+    templateId?: string;
+    maxPrice?: number;
+    communityCloud?: boolean;
+    workersMin?: number;
+    workersMax?: number;
+  }): Promise<Endpoint> {
+    let templateId = config.templateId;
+    if (!templateId && config.task) {
+      const tpl = await this.getRecommendedTemplate(config.task);
+      if (tpl) templateId = tpl.id;
+    }
+    if (!templateId) throw new ValidationError('templateId or task is required');
+
+    const gpu = await this.getCheapestGpu(config.communityCloud ?? true);
+    if (!gpu) throw new APIError('No available GPUs found', 404);
+
+    const price = config.communityCloud
+      ? (gpu.lowestPrice?.minimumBidPrice ?? gpu.communityPrice)
+      : (gpu.lowestPrice?.uninterruptablePrice ?? gpu.securePrice);
+
+    if (config.maxPrice && price && price > config.maxPrice) {
+      throw new ValidationError(
+        `Cheapest GPU price (${price}) exceeds maxPrice (${config.maxPrice})`
+      );
+    }
+
+    return this.createEndpoint({
+      name: config.name,
+      templateId,
+      gpuIds: [gpu.id],
+      workersMin: config.workersMin ?? 0,
+      workersMax: config.workersMax ?? 1,
+      scalerType: 'QUEUE_DELAY',
+      scalerValue: 4,
+      idleTimeout: 5,
+    });
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+
+  async getResourceStats(): Promise<ResourceStats> {
+    const [templates, gpuTypes] = await Promise.all([this.getTemplates(), this.getGpuTypes()]);
+    const available = gpuTypes.filter((g) => {
+      const s = g.lowestPrice?.stockStatus;
+      return s && ['HIGH', 'MEDIUM'].includes(s);
+    });
+    return {
+      totalTemplates: templates.length,
+      comfyTemplates: templates.filter(
+        (t) => t.name.toLowerCase().includes('comfy') || t.imageName.toLowerCase().includes('comfy')
+      ).length,
+      publicTemplates: templates.filter((t) => t.isPublic).length,
+      totalGpus: gpuTypes.length,
+      availableGpus: available.length,
+      communityGpus: gpuTypes.filter((g) => g.communityCloud).length,
+      secureGpus: gpuTypes.filter((g) => g.secureCloud).length,
+    };
   }
 
   // ✅ Serverless методи з type safety

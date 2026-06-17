@@ -628,4 +628,9 @@ export class PodManager {
     );
     return results;
   }
+
+  async getPodLogs(podId: string): Promise<{ logs: string[] }> {
+    if (!podId) throw new ValidationError('Pod ID is required');
+    return this.client.getJobLogs(podId);
+  }
 }
