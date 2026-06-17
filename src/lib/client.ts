@@ -396,6 +396,7 @@ export class RunPodClient {
     name: string;
     task?: 'comfyui' | 'stable-diffusion' | 'pytorch' | 'tensorflow';
     templateId?: string;
+    gpuIds?: string[];
     maxPrice?: number;
     communityCloud?: boolean;
     workersMin?: number;
@@ -421,9 +422,17 @@ export class RunPodClient {
       );
     }
 
+    // Use caller-supplied pool IDs or default to common community GPU pools
+    const gpuIds = config.gpuIds?.length
+      ? config.gpuIds
+      : (config.communityCloud ?? true)
+        ? ['AMPERE_16', 'AMPERE_24', 'ADA_24']
+        : ['AMPERE_80', 'ADA_80_PRO', 'HOPPER_141'];
+
     return this.createEndpoint({
       name: config.name,
       templateId,
+      gpuIds,
       workersMin: config.workersMin ?? 0,
       workersMax: config.workersMax ?? 1,
       scalerType: 'QUEUE_DELAY',
