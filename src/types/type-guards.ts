@@ -138,6 +138,7 @@ export interface GpuType {
   secureSpotPrice?: number;
   throughput?: number;
   lowestPrice?: {
+    gpuTypeId?: string;
     minimumBidPrice?: number;
     uninterruptablePrice?: number;
     stockStatus?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNAVAILABLE';
