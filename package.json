@@ -4,13 +4,14 @@
   "description": "TypeScript library for RunPod Serverless API automation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": ["dist"],
   "author": "Gdymora",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "prepare": "tsc",
+    "prepare": "npm run build",
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "jest",

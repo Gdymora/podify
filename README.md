@@ -5,11 +5,16 @@
 ## 🚀 Quick Start
 
 ```bash
-npm install podify
+# npm
+npm install @gdymora/runpod-api
+
+# pnpm (або напряму з GitHub)
+pnpm add @gdymora/runpod-api
+# pnpm add github:Gdymora/podify
 ```
 
 ```typescript
-import { RunPodClient, ServerlessManager } from 'podify';
+import { RunPodClient, ServerlessManager } from '@gdymora/runpod-api';
 
 const client = new RunPodClient({ apiKey: 'your-api-key' });
 const manager = new ServerlessManager(client);
