@@ -349,11 +349,18 @@ export class RunPodClient {
     const query = `
       query {
         gpuTypes {
-          id displayName memoryInGb secureCloud communityCloud
-          securePrice communityPrice clusterPrice
-          oneMonthPrice threeMonthPrice sixMonthPrice oneWeekPrice
-          communitySpotPrice secureSpotPrice throughput
-          lowestPrice { minimumBidPrice uninterruptablePrice stockStatus }
+          id
+          displayName
+          memoryInGb
+          secureCloud
+          communityCloud
+          securePrice
+          communityPrice
+          lowestPrice {
+            minimumBidPrice
+            uninterruptablePrice
+            stockStatus
+          }
         }
       }
     `;
