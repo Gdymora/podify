@@ -208,6 +208,41 @@ export class RunPodClient {
     return result.saveEndpoint;
   }
 
+  async updateEndpoint(endpointId: string, config: Partial<EndpointConfig>): Promise<Endpoint> {
+    if (!endpointId || typeof endpointId !== 'string') {
+      throw new ValidationError('Valid endpoint ID is required');
+    }
+
+    const mutation = `
+      mutation UpdateEndpoint($input: EndpointInput!) {
+        saveEndpoint(input: $input) {
+          id name workersMin workersMax idleTimeout scalerType scalerValue gpuIds
+        }
+      }
+    `;
+
+    const variables = {
+      input: {
+        id: endpointId,
+        ...(config.name !== undefined ? { name: config.name } : {}),
+        ...(config.gpuIds?.length ? { gpuIds: Array.isArray(config.gpuIds) ? config.gpuIds.join(',') : config.gpuIds } : {}),
+        workersMin: config.workersMin ?? 0,
+        workersMax: config.workersMax ?? 1,
+        idleTimeout: config.idleTimeout ?? 5,
+        scalerType: config.scalerType || 'QUEUE_DELAY',
+        scalerValue: config.scalerValue ?? 4,
+      },
+    };
+
+    const result = await this.graphql<{ saveEndpoint: Endpoint }>(mutation, variables);
+
+    if (!result.saveEndpoint) {
+      throw new APIError('Invalid updateEndpoint response', 500);
+    }
+
+    return result.saveEndpoint;
+  }
+
   async deleteEndpoint(endpointId: string): Promise<boolean> {
     if (!endpointId || typeof endpointId !== 'string') {
       throw new ValidationError('Valid endpoint ID is required');
